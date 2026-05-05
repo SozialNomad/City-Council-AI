@@ -38,6 +38,24 @@ def main() -> None:
     async def _post_init(application) -> None:  # noqa: ANN001
         scheduler.start()
         logger.info("Scheduler started.")
+        
+        # Send initial greeting message
+        from config import TELEGRAM_CHAT_ID
+        try:
+            await application.bot.send_message(
+                chat_id=TELEGRAM_CHAT_ID,
+                text=(
+                    "🌿 *Hello! I am Green Agent.* 🌿\n\n"
+                    "I have just been activated. I'm here to help you monitor city air quality "
+                    "and provide environmental insights. You can ask me anything about "
+                    "pollution or wait for my scheduled weekly reports.\n\n"
+                    "How can I assist you today?"
+                ),
+                parse_mode="Markdown"
+            )
+            logger.info("Initial greeting sent to %s", TELEGRAM_CHAT_ID)
+        except Exception as e:
+            logger.warning("Could not send initial greeting: %s. The user may need to message the bot first.", e)
 
     async def _post_shutdown(application) -> None:  # noqa: ANN001
         scheduler.shutdown(wait=False)
