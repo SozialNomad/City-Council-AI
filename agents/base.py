@@ -1,5 +1,5 @@
 """
-Base LLM Agent — isolated wrapper for Google Gemini Flash 2.5.
+Base LLM Agent — isolated wrapper for OpenAI.
 
 All domain-specific agents inherit from this class. They only need
 to supply a system prompt; the API plumbing lives entirely here.
@@ -8,16 +8,15 @@ to supply a system prompt; the API plumbing lives entirely here.
 from __future__ import annotations
 
 import logging
-from google import genai
-from google.genai import types
+from openai import AsyncOpenAI
 
-from config import GEMINI_API_KEY, GEMINI_MODEL
+from config import OPENAI_API_KEY, OPENAI_MODEL
 
 logger = logging.getLogger(__name__)
 
 
 class BaseLLMAgent:
-    """Thin async wrapper around the Gemini generative API.
+    """Thin async wrapper around the OpenAI generative API.
 
     Subclasses set ``SYSTEM_PROMPT`` as a class variable and call
     ``await self.generate(user_input)`` to get a response.
@@ -26,13 +25,13 @@ class BaseLLMAgent:
     SYSTEM_PROMPT: str = ""
 
     def __init__(self, model: str | None = None) -> None:
-        self._model = model or GEMINI_MODEL
-        self._client = genai.Client(api_key=GEMINI_API_KEY)
+        self._model = model or OPENAI_MODEL
+        self._client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
     async def generate(self, user_input: str) -> str:
-        """Send *user_input* to Gemini and return the model's text response.
+        """Send *user_input* to OpenAI and return the model's text response.
 
-        The system prompt is injected automatically via ``config.system_instruction``.
+        The system prompt is injected automatically.
         """
         logger.info(
             "Agent %s generating response (model=%s) …",
@@ -40,16 +39,16 @@ class BaseLLMAgent:
             self._model,
         )
 
-        response = await self._client.aio.models.generate_content(
+        response = await self._client.chat.completions.create(
             model=self._model,
-            contents=user_input,
-            config=types.GenerateContentConfig(
-                system_instruction=self.SYSTEM_PROMPT,
-                temperature=0.7,
-                max_output_tokens=1024,
-            ),
+            messages=[
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "user", "content": user_input}
+            ],
+            temperature=0.7,
+            max_tokens=1024,
         )
 
-        text: str = response.text or ""
+        text: str = response.choices[0].message.content or ""
         logger.debug("Agent %s response length: %d chars", self.__class__.__name__, len(text))
         return text

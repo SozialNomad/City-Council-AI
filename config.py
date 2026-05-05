@@ -24,10 +24,10 @@ TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID: str = os.environ["TELEGRAM_CHAT_ID"]
 
 # ---------------------------------------------------------------------------
-# Google Gemini
+# OpenAI
 # ---------------------------------------------------------------------------
-GEMINI_API_KEY: str = os.environ["GEMINI_API_KEY"]
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
+OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 # ---------------------------------------------------------------------------
 # Air Quality (WAQI)
