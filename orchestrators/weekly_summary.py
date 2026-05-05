@@ -1,0 +1,109 @@
+"""
+Workflow 2 — Automated Weekly Air Quality Summary.
+
+Fetches current pollution data, compares to previous week,
+generates an LLM commentary, and sends it to Telegram.
+"""
+
+from __future__ import annotations
+
+import logging
+import textwrap
+
+from agents.reporter import ReporterAgent
+from services.air_quality import AirQualityData, fetch_air_quality
+from services.storage import load_previous_data, save_current_data
+
+logger = logging.getLogger(__name__)
+
+_reporter: ReporterAgent | None = None
+
+
+def _get_reporter() -> ReporterAgent:
+    global _reporter
+    if _reporter is None:
+        _reporter = ReporterAgent()
+    return _reporter
+
+
+def _calculate_deltas(
+    current: AirQualityData,
+    previous: dict | None,
+) -> dict[str, float | str]:
+    """Return a dict of metric deltas (current − previous).
+
+    If *previous* is ``None`` (first run), all deltas are marked ``"N/A"``.
+    """
+    if previous is None:
+        return {"aqi": "N/A", "pm25": "N/A", "pm10": "N/A"}
+
+    return {
+        "aqi": current.aqi - int(previous.get("aqi", 0)),
+        "pm25": round(current.pm25 - float(previous.get("pm25", 0.0)), 2),
+        "pm10": round(current.pm10 - float(previous.get("pm10", 0.0)), 2),
+    }
+
+
+def _format_report_input(
+    current: AirQualityData,
+    previous: dict | None,
+    deltas: dict,
+) -> str:
+    """Build a structured text block for the Reporter agent."""
+    prev_section = "No previous data available (first report)."
+    if previous is not None:
+        prev_section = textwrap.dedent(f"""\
+            AQI:   {previous.get('aqi', 'N/A')}
+            PM2.5: {previous.get('pm25', 'N/A')}
+            PM10:  {previous.get('pm10', 'N/A')}
+            Date:  {previous.get('timestamp', 'N/A')}""")
+
+    return textwrap.dedent(f"""\
+        Location: {current.location}
+
+        --- This Week ---
+        AQI:   {current.aqi}
+        PM2.5: {current.pm25}
+        PM10:  {current.pm10}
+        Date:  {current.timestamp}
+
+        --- Last Week ---
+        {prev_section}
+
+        --- Changes (Δ) ---
+        AQI:   {deltas['aqi']}
+        PM2.5: {deltas['pm25']}
+        PM10:  {deltas['pm10']}
+    """)
+
+
+async def run_weekly_summary() -> str:
+    """Execute the full weekly summary pipeline.
+
+    Returns the generated commentary text. The caller (scheduler) is
+    responsible for sending it to Telegram.
+    """
+    reporter = _get_reporter()
+
+    logger.info("Starting weekly summary pipeline …")
+
+    # 1. Fetch current data
+    current_data = await fetch_air_quality()
+    logger.info("Fetched current air quality: AQI=%d", current_data.aqi)
+
+    # 2. Load previous data
+    previous_data = load_previous_data()
+
+    # 3. Compute deltas
+    deltas = _calculate_deltas(current_data, previous_data)
+    logger.info("Deltas computed: %s", deltas)
+
+    # 4. Generate commentary
+    report_input = _format_report_input(current_data, previous_data, deltas)
+    commentary = await reporter.generate(report_input)
+    logger.info("Reporter commentary generated.")
+
+    # 5. Persist current data for next week
+    save_current_data(current_data.to_dict())
+
+    return commentary
