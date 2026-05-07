@@ -29,7 +29,6 @@ import urllib.parse
 import json
 
 from config import TELEGRAM_CHAT_ID, TELEGRAM_BOT_TOKEN  # noqa: F401
-from scheduler.weekly import create_scheduler, set_telegram_app
 from services.telegram_bot import build_application
 
 # ---------------------------------------------------------------------------
@@ -243,14 +242,8 @@ def main() -> None:
     # 1. Build the Telegram bot application
     app = build_application()
 
-    # 2. Create the weekly scheduler and give it access to the bot
-    scheduler = create_scheduler()
-    set_telegram_app(app)
-
     # 3. Register lifecycle hooks
     async def _post_init(application) -> None:  # noqa: ANN001
-        scheduler.start()
-        logger.info("Scheduler started.")
 
         from config import TELEGRAM_CHAT_ID
         try:
@@ -260,7 +253,7 @@ def main() -> None:
                     "🌿 *Hello! I am Green Agent.* 🌿\n\n"
                     "I have just been activated. I'm here to help you monitor city air quality "
                     "and provide environmental insights. You can ask me anything about "
-                    "pollution or wait for my scheduled weekly reports.\n\n"
+                    "pollution or type 'report' to see a summary of recent changes.\n\n"
                     "How can I assist you today?"
                 ),
                 parse_mode="Markdown",
@@ -273,11 +266,7 @@ def main() -> None:
             )
 
     async def _post_shutdown(application) -> None:  # noqa: ANN001
-        try:
-            scheduler.shutdown(wait=False)
-            logger.info("Scheduler shut down.")
-        except Exception:
-            pass
+        pass
 
     async def _error_handler(update, context) -> None:  # noqa: ANN001
         from telegram.error import Conflict

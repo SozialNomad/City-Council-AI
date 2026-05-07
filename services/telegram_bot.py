@@ -18,7 +18,8 @@ from telegram.ext import (
 
 from config import TELEGRAM_BOT_TOKEN
 from orchestrators.comparator import run_comparison
-from orchestrators.weekly_summary import run_weekly_summary
+from orchestrators.reporter_workflow import run_report_workflow
+from agents.reporter import ReporterAgent
 
 logger = logging.getLogger(__name__)
 
@@ -129,16 +130,33 @@ async def _handle_report_command(update: Update, context: ContextTypes.DEFAULT_T
     chat_id = update.message.chat_id
     logger.info("Manual report trigger requested from chat %s.", chat_id)
 
-    await context.bot.send_message(
+    # 1. Send the status message and store it
+    status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text="🔄 Generating weekly report summary... Please wait.",
+        text="🔄 Generating report summary... Please wait.",
     )
 
     try:
-        commentary = await run_weekly_summary()
-        await _send_long(context.bot, chat_id, commentary)
+        # 2. Run the workflow
+        commentary = await run_report_workflow()
+        
+        # 3. Add header (bold name + icon) and send the final report
+        header = f"*{ReporterAgent.ICON} {ReporterAgent.DISPLAY_NAME}*"
+        full_text = f"{header}\n\n{commentary}"
+        await _send_long(context.bot, chat_id, full_text)
+        
+        # 4. Delete the initial status message to keep the chat clean
+        await context.bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
+
     except Exception:
-        logger.exception("Manual weekly summary failed.")
+        logger.exception("Manual report summary failed.")
+        
+        # Try to cleanup the status message even on failure
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
+        except Exception:
+            pass
+
         await context.bot.send_message(
             chat_id=chat_id,
             text="❌ Sorry, I couldn't generate the report right now.",

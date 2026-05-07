@@ -33,7 +33,7 @@ OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 # Air Quality (WAQI)
 # ---------------------------------------------------------------------------
 AIR_QUALITY_API_KEY: str = os.environ["AIR_QUALITY_API_KEY"]
-AIR_QUALITY_LOCATION: str = os.getenv("AIR_QUALITY_LOCATION", "berlin")
+AIR_QUALITY_LOCATION: str = os.getenv("AIR_QUALITY_LOCATION", "würzburg")
 WAQI_BASE_URL: str = "https://api.waqi.info"
 
 # ---------------------------------------------------------------------------
@@ -42,10 +42,3 @@ WAQI_BASE_URL: str = "https://api.waqi.info"
 DATA_DIR: Path = _PROJECT_ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
 AIR_QUALITY_HISTORY_FILE: Path = DATA_DIR / "air_quality_history.json"
-
-# ---------------------------------------------------------------------------
-# Scheduler
-# ---------------------------------------------------------------------------
-WEEKLY_REPORT_DAY: str = os.getenv("WEEKLY_REPORT_DAY", "mon")  # mon-sun
-WEEKLY_REPORT_HOUR: int = int(os.getenv("WEEKLY_REPORT_HOUR", "8"))
-WEEKLY_REPORT_MINUTE: int = int(os.getenv("WEEKLY_REPORT_MINUTE", "0"))

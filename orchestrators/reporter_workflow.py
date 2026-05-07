@@ -1,7 +1,7 @@
 """
-Workflow 2 — Automated Weekly Air Quality Summary.
+Workflow 2 — On-demand Air Quality Summary.
 
-Fetches current pollution data, compares to previous week,
+Fetches current pollution data, compares to previous snapshot,
 generates an LLM commentary, and sends it to Telegram.
 """
 
@@ -61,13 +61,13 @@ def _format_report_input(
     return textwrap.dedent(f"""\
         Location: {current.location}
 
-        --- This Week ---
+        --- Current Snapshot ---
         AQI:   {current.aqi}
         PM2.5: {current.pm25}
         PM10:  {current.pm10}
         Date:  {current.timestamp}
 
-        --- Last Week ---
+        --- Previous Snapshot ---
         {prev_section}
 
         --- Changes (Δ) ---
@@ -77,15 +77,14 @@ def _format_report_input(
     """)
 
 
-async def run_weekly_summary() -> str:
-    """Execute the full weekly summary pipeline.
+async def run_report_workflow() -> str:
+    """Execute the full air quality report pipeline.
 
-    Returns the generated commentary text. The caller (scheduler) is
-    responsible for sending it to Telegram.
+    Returns the generated commentary text.
     """
     reporter = _get_reporter()
 
-    logger.info("Starting weekly summary pipeline …")
+    logger.info("Starting report summary pipeline …")
 
     # 1. Fetch current data
     current_data = await fetch_air_quality()
