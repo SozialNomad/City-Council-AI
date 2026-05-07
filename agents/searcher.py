@@ -5,7 +5,7 @@ of headlines with links.
 
 from agents.base import BaseLLMAgent
 
-class SearchAgent(BaseLLMAgent):
+class SearcherAgent(BaseLLMAgent):
     """Formats web search results into a clean list of headlines and links."""
 
     DISPLAY_NAME: str = "Searcher Agent"

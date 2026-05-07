@@ -20,7 +20,7 @@ from config import TELEGRAM_BOT_TOKEN
 from orchestrators.comparator import run_comparison
 from orchestrators.reporter_workflow import run_report_workflow
 from agents.reporter import ReporterAgent
-from agents.search_agent import SearchAgent
+from agents.searcher import SearcherAgent
 from services.storage import load_settings, save_settings
 from services.search import perform_search
 
@@ -221,8 +221,8 @@ async def _handle_web_search_command(update: Update, context: ContextTypes.DEFAU
             )
             return
 
-        # 4. Process with SearchAgent
-        search_agent = SearchAgent()
+        # 4. Process with SearcherAgent
+        search_agent = SearcherAgent()
         # Format results for the agent
         formatted_results = "\n\n".join([f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}" for r in results])
         
@@ -230,7 +230,7 @@ async def _handle_web_search_command(update: Update, context: ContextTypes.DEFAU
         commentary = await search_agent.generate(agent_input)
 
         # 5. Send final message
-        header = f"*{SearchAgent.ICON} {SearchAgent.DISPLAY_NAME}*"
+        header = f"*{SearcherAgent.ICON} {SearcherAgent.DISPLAY_NAME}*"
         full_text = f"{header}\n\n{commentary}"
         
         await _send_long(context.bot, chat_id, full_text, parse_mode="Markdown")
