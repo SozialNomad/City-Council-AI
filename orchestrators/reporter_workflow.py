@@ -13,6 +13,7 @@ import textwrap
 from agents.reporter import ReporterAgent
 from services.air_quality import AirQualityData, fetch_air_quality
 from services.storage import load_previous_data, save_current_data, load_settings
+from services.search import perform_search
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ def _format_report_input(
     current: AirQualityData,
     previous: dict | None,
     deltas: dict,
+    news: list[dict[str, str]] | None = None,
 ) -> str:
     """Build a structured text block for the Reporter agent."""
     prev_section = "No previous data available (first report)."
@@ -57,6 +59,10 @@ def _format_report_input(
             PM2.5: {previous.get('pm25', 'N/A')}
             PM10:  {previous.get('pm10', 'N/A')}
             Date:  {previous.get('timestamp', 'N/A')}""")
+
+    news_section = "No relevant recent news found."
+    if news:
+        news_section = "\n".join([f"- {r['title']} | Source: {r['href']}" for r in news])
 
     return textwrap.dedent(f"""\
         Location: {current.location}
@@ -74,6 +80,9 @@ def _format_report_input(
         AQI:   {deltas['aqi']}
         PM2.5: {deltas['pm25']}
         PM10:  {deltas['pm10']}
+
+        --- Latest Local News ---
+        {news_section}
     """)
 
 
@@ -106,8 +115,13 @@ async def run_report_workflow() -> str:
     deltas = _calculate_deltas(current_data, previous_data)
     logger.info("Deltas computed: %s", deltas)
 
-    # 4. Generate commentary
-    report_input = _format_report_input(current_data, previous_data, deltas)
+    # 4. Fetch latest news for the city
+    search_query = f'"{current_data.location}" sustainability environment "climate change"'
+    news_results = perform_search(search_query, max_results=3)
+    logger.info("Fetched %d news results for %s", len(news_results), current_data.location)
+
+    # 5. Generate commentary
+    report_input = _format_report_input(current_data, previous_data, deltas, news_results)
     commentary = await reporter.generate(report_input)
     logger.info("Reporter commentary generated.")
 
