@@ -36,6 +36,20 @@ class AirQualityData:
         return cls(**data)
 
 
+def _safe_int(value, default=0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value, default=0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 async def fetch_air_quality(
     location: str | None = None,
 ) -> AirQualityData:
@@ -63,8 +77,8 @@ async def fetch_air_quality(
 
     return AirQualityData(
         location=loc,
-        aqi=int(data.get("aqi", 0)),
-        pm25=float(iaqi.get("pm25", {}).get("v", 0.0)),
-        pm10=float(iaqi.get("pm10", {}).get("v", 0.0)),
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        aqi=_safe_int(data.get("aqi")),
+        pm25=_safe_float(iaqi.get("pm25", {}).get("v")),
+        pm10=_safe_float(iaqi.get("pm10", {}).get("v")),
+        timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
     )

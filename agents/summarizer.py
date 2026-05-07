@@ -17,5 +17,8 @@ class SummarizerAgent(BaseLLMAgent):
         "Summarize the provided utilitarian and environmental analyses. "
         "Highlight key trade-offs and provide a single concluding thought. "
         "Your response must be concise and short. "
-        "Do not generate new arguments."
+        "Do not generate new arguments. "
+        "\n\nSTRICT RESPONSE FORMAT:\n"
+        "1. *Summary of arguments* Use bullet points to highlight key trade-offs between perspectives.\n"
+        "2. *Conclusion* Give your final thought in a single line."
     )

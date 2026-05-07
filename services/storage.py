@@ -11,7 +11,7 @@ import json
 import logging
 from pathlib import Path
 
-from config import AIR_QUALITY_HISTORY_FILE
+from config import AIR_QUALITY_HISTORY_FILE, SETTINGS_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -45,3 +45,24 @@ def save_current_data(data: dict, path: Path | None = None) -> None:
         json.dump(data, fh, indent=2, ensure_ascii=False)
 
     logger.info("Saved current air quality data to %s.", filepath)
+
+
+def load_settings() -> dict:
+    """Read global settings (e.g. current city) from disk."""
+    if not SETTINGS_FILE.exists():
+        return {}
+
+    try:
+        with SETTINGS_FILE.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to read settings: %s", exc)
+        return {}
+
+
+def save_settings(settings: dict) -> None:
+    """Persist settings to disk."""
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with SETTINGS_FILE.open("w", encoding="utf-8") as fh:
+        json.dump(settings, fh, indent=2, ensure_ascii=False)
+    logger.info("Settings saved to %s.", SETTINGS_FILE)

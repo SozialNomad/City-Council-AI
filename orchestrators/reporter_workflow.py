@@ -12,7 +12,7 @@ import textwrap
 
 from agents.reporter import ReporterAgent
 from services.air_quality import AirQualityData, fetch_air_quality
-from services.storage import load_previous_data, save_current_data
+from services.storage import load_previous_data, save_current_data, load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -86,14 +86,23 @@ async def run_report_workflow() -> str:
 
     logger.info("Starting report summary pipeline …")
 
+    # 0. Get current city from settings
+    settings = load_settings()
+    current_city = settings.get("city")  # Falls back to None, then fetch_air_quality uses config default
+
     # 1. Fetch current data
-    current_data = await fetch_air_quality()
-    logger.info("Fetched current air quality: AQI=%d", current_data.aqi)
+    current_data = await fetch_air_quality(location=current_city)
+    logger.info("Fetched current air quality for %s: AQI=%d", current_data.location, current_data.aqi)
 
     # 2. Load previous data
     previous_data = load_previous_data()
 
-    # 3. Compute deltas
+    # 3. Compute deltas - Skip comparison if city has changed
+    if previous_data and previous_data.get("location") != current_data.location:
+        logger.info("City changed from %s to %s. Skipping comparison.", 
+                    previous_data.get("location"), current_data.location)
+        previous_data = None
+
     deltas = _calculate_deltas(current_data, previous_data)
     logger.info("Deltas computed: %s", deltas)
 
@@ -102,7 +111,7 @@ async def run_report_workflow() -> str:
     commentary = await reporter.generate(report_input)
     logger.info("Reporter commentary generated.")
 
-    # 5. Persist current data for next week
+    # 5. Persist current data for next time
     save_current_data(current_data.to_dict())
 
     return commentary

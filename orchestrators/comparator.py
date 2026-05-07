@@ -34,55 +34,70 @@ def _get_agents() -> tuple[UtilitarianAgent, GreenAgent, SummarizerAgent]:
     return _utilitarian, _green, _summarizer
 
 
-async def run_comparison(user_message: str) -> list[dict[str, str]]:
-    """Execute the full comparison pipeline and return all agent responses.
+import asyncio
+from typing import AsyncGenerator
 
-    Steps (sequential — each depends on the previous):
-        1. Utilitarian analysis
-        2. Green / Environmental analysis
-        3. Summarizer synthesises both analyses
+async def run_comparison(user_message: str) -> AsyncGenerator[dict[str, str], None]:
+    """Execute the comparison pipeline and yield results as they become ready.
+
+    Utilitarian and Green agents run in parallel. The Summarizer runs
+    after both are complete.
     """
     utilitarian, green, summarizer = _get_agents()
 
-    logger.info("Starting comparison pipeline …")
+    logger.info("Starting parallel comparison pipeline …")
 
-    # Step 1 — Utilitarian perspective
-    utilitarian_output = await utilitarian.generate(user_message)
-    logger.info("Utilitarian analysis complete.")
+    # 1. Run Utilitarian and Green agents concurrently
+    # We use tasks so we can wait for them and handle results
+    util_task = asyncio.create_task(utilitarian.generate(user_message))
+    green_task = asyncio.create_task(green.generate(user_message))
 
-    # Step 2 — Environmental perspective
-    green_output = await green.generate(user_message)
-    logger.info("Green analysis complete.")
+    # Wait for both to finish (we could yield them as they finish using as_completed,
+    # but to maintain a consistent order [Util -> Green -> Summary], we'll just wait)
+    # Actually, the user wants them as they are ready.
+    
+    pending = {util_task, green_task}
+    results_map = {}
 
-    # Step 3 — Synthesis
+    while pending:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            if task == util_task:
+                output = task.result()
+                results_map["utilitarian"] = output
+                logger.info("Utilitarian analysis complete.")
+                yield {
+                    "name": utilitarian.DISPLAY_NAME,
+                    "icon": utilitarian.ICON,
+                    "content": output,
+                }
+            elif task == green_task:
+                output = task.result()
+                results_map["green"] = output
+                logger.info("Green analysis complete.")
+                yield {
+                    "name": green.DISPLAY_NAME,
+                    "icon": green.ICON,
+                    "content": output,
+                }
+
+    # 2. Run Summarizer (depends on previous two)
     combined_input = textwrap.dedent(f"""\
         User's original message:
         {user_message}
 
         --- Utilitarian Analysis ---
-        {utilitarian_output}
+        {results_map['utilitarian']}
 
         --- Environmental Analysis ---
-        {green_output}
+        {results_map['green']}
     """)
 
     summary = await summarizer.generate(combined_input)
     logger.info("Summarizer complete — pipeline finished.")
 
-    return [
-        {
-            "name": utilitarian.DISPLAY_NAME,
-            "icon": utilitarian.ICON,
-            "content": utilitarian_output,
-        },
-        {
-            "name": green.DISPLAY_NAME,
-            "icon": green.ICON,
-            "content": green_output,
-        },
-        {
-            "name": summarizer.DISPLAY_NAME,
-            "icon": summarizer.ICON,
-            "content": summary,
-        },
-    ]
+    yield {
+        "name": summarizer.DISPLAY_NAME,
+        "icon": summarizer.ICON,
+        "content": summary,
+    }

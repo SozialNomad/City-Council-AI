@@ -42,3 +42,4 @@ WAQI_BASE_URL: str = "https://api.waqi.info"
 DATA_DIR: Path = _PROJECT_ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
 AIR_QUALITY_HISTORY_FILE: Path = DATA_DIR / "air_quality_history.json"
+SETTINGS_FILE: Path = DATA_DIR / "settings.json"
