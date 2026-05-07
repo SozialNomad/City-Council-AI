@@ -9,6 +9,9 @@ from agents.base import BaseLLMAgent
 class UtilitarianAgent(BaseLLMAgent):
     """Analyses user input for cost-effectiveness, time-saving, and utility."""
 
+    DISPLAY_NAME: str = "Utilitarian Advisor"
+    ICON: str = "⚖️"
+
     SYSTEM_PROMPT: str = (
         "You are a highly pragmatic Utilitarian Advisor. "
         "Analyze the user's input strictly from the perspective of personal benefit, "

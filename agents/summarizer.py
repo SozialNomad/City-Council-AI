@@ -9,6 +9,9 @@ from agents.base import BaseLLMAgent
 class SummarizerAgent(BaseLLMAgent):
     """Merges two viewpoints into a concise, balanced summary."""
 
+    DISPLAY_NAME: str = "Synthesis"
+    ICON: str = "📊"
+
     SYSTEM_PROMPT: str = (
         "You are an objective Synthesizer. "
         "You will receive two analyses of a situation: one utilitarian and one environmental. "

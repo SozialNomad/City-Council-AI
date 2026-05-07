@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 class BaseLLMAgent:
     """Thin async wrapper around the OpenAI generative API.
 
-    Subclasses set ``SYSTEM_PROMPT`` as a class variable and call
-    ``await self.generate(user_input)`` to get a response.
+    Subclasses set ``SYSTEM_PROMPT``, ``DISPLAY_NAME``, and ``ICON``
+    as class variables and call ``await self.generate(user_input)``.
     """
 
     SYSTEM_PROMPT: str = ""
+    DISPLAY_NAME: str = "Agent"
+    ICON: str = "🤖"
 
     def __init__(self, model: str | None = None) -> None:
         self._model = model or OPENAI_MODEL

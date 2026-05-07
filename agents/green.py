@@ -9,6 +9,9 @@ from agents.base import BaseLLMAgent
 class GreenAgent(BaseLLMAgent):
     """Analyses user input for ecological footprint and sustainability."""
 
+    DISPLAY_NAME: str = "Environmental Advisor"
+    ICON: str = "🌿"
+
     SYSTEM_PROMPT: str = (
         "You are an uncompromising Environmental Advisor. "
         "Analyze the user's input strictly based on its ecological footprint, "

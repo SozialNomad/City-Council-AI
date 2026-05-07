@@ -22,6 +22,68 @@ from orchestrators.weekly_summary import run_weekly_summary
 
 logger = logging.getLogger(__name__)
 
+# Telegram's hard limit per message
+_MAX_MSG_LEN = 4096
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+async def _send_long(
+    bot,
+    chat_id: int | str,
+    text: str,
+    parse_mode: str | None = "Markdown",
+) -> None:
+    """Send *text*, splitting into chunks if it exceeds Telegram's 4096-char limit.
+
+    Splits on newlines where possible to avoid cutting mid-sentence.
+    Falls back to plain text if the Markdown parse fails.
+    """
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > _MAX_MSG_LEN:
+        # Try to split at the last newline within the limit
+        split_at = remaining.rfind("\n", 0, _MAX_MSG_LEN)
+        if split_at == -1:
+            split_at = _MAX_MSG_LEN
+        chunks.append(remaining[:split_at])
+        remaining = remaining[split_at:].lstrip("\n")
+    chunks.append(remaining)
+
+    for chunk in chunks:
+        if not chunk.strip():
+            continue
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=chunk,
+                parse_mode=parse_mode,
+            )
+        except Exception:
+            # Markdown parse error — retry as plain text
+            await bot.send_message(chat_id=chat_id, text=chunk)
+
+
+async def _send_agent_results(
+    bot,
+    chat_id: int | str,
+    results: list[dict[str, str]],
+) -> None:
+    """Send each agent result as a separate Telegram message with a styled header."""
+    for entry in results:
+        icon = entry.get("icon", "🤖")
+        name = entry.get("name", "Agent")
+        content = entry.get("content", "")
+
+        # Bold header via Markdown
+        header = f"*{icon} {name}*"
+        full_text = f"{header}\n\n{content}"
+
+        await _send_long(bot, chat_id, full_text, parse_mode="Markdown")
+
+
 # ---------------------------------------------------------------------------
 # Message handler (Workflow 1 entry point)
 # ---------------------------------------------------------------------------
@@ -41,14 +103,22 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await _handle_report_command(update, context)
         return
 
+    # Typing indicator — shows "typing…" while agents work
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+
     # Run Workflow 1 — sequential agent pipeline
     try:
-        summary = await run_comparison(user_text)
+        results: list[dict[str, str]] = await run_comparison(user_text)
     except Exception:
         logger.exception("Error in comparison pipeline")
-        summary = "⚠️ An error occurred while processing your request. Please try again later."
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ An error occurred while processing your request. Please try again later.",
+        )
+        return
 
-    await context.bot.send_message(chat_id=chat_id, text=summary)
+    # Send each agent's response as a separate message
+    await _send_agent_results(context.bot, chat_id, results)
 
 
 async def _handle_report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -59,23 +129,29 @@ async def _handle_report_command(update: Update, context: ContextTypes.DEFAULT_T
     chat_id = update.message.chat_id
     logger.info("Manual report trigger requested from chat %s.", chat_id)
 
-    await context.bot.send_message(chat_id=chat_id, text="🔄 Generating weekly report summary... Please wait.")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="🔄 Generating weekly report summary... Please wait.",
+    )
 
     try:
         commentary = await run_weekly_summary()
-        await context.bot.send_message(chat_id=chat_id, text=commentary)
+        await _send_long(context.bot, chat_id, commentary)
     except Exception:
         logger.exception("Manual weekly summary failed.")
-        await context.bot.send_message(chat_id=chat_id, text="❌ Sorry, I couldn't generate the report right now.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Sorry, I couldn't generate the report right now.",
+        )
 
 
 # ---------------------------------------------------------------------------
-# Helper — send an arbitrary message (used by Workflow 2)
+# Helper — send an arbitrary message (used by Workflow 2 / scheduler)
 # ---------------------------------------------------------------------------
 
 async def send_message(application: Application, chat_id: str | int, text: str) -> None:
-    """Send *text* to *chat_id* via the bot instance owned by *application*."""
-    await application.bot.send_message(chat_id=chat_id, text=text)
+    """Send *text* to *chat_id*, chunking if needed."""
+    await _send_long(application.bot, chat_id, text)
 
 
 # ---------------------------------------------------------------------------

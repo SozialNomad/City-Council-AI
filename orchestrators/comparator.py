@@ -34,8 +34,8 @@ def _get_agents() -> tuple[UtilitarianAgent, GreenAgent, SummarizerAgent]:
     return _utilitarian, _green, _summarizer
 
 
-async def run_comparison(user_message: str) -> str:
-    """Execute the full comparison pipeline and return the summary text.
+async def run_comparison(user_message: str) -> list[dict[str, str]]:
+    """Execute the full comparison pipeline and return all agent responses.
 
     Steps (sequential — each depends on the previous):
         1. Utilitarian analysis
@@ -69,4 +69,20 @@ async def run_comparison(user_message: str) -> str:
     summary = await summarizer.generate(combined_input)
     logger.info("Summarizer complete — pipeline finished.")
 
-    return summary
+    return [
+        {
+            "name": utilitarian.DISPLAY_NAME,
+            "icon": utilitarian.ICON,
+            "content": utilitarian_output,
+        },
+        {
+            "name": green.DISPLAY_NAME,
+            "icon": green.ICON,
+            "content": green_output,
+        },
+        {
+            "name": summarizer.DISPLAY_NAME,
+            "icon": summarizer.ICON,
+            "content": summary,
+        },
+    ]
