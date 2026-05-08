@@ -283,7 +283,7 @@ def main() -> None:
     app.post_shutdown = _post_shutdown
     app.add_error_handler(_error_handler)
 
-    # 4. Start polling (blocking — runs until Ctrl+C)
+    # 4. Start polling
     logger.info("Handing control to run_polling …")
     app.run_polling(drop_pending_updates=True)
 

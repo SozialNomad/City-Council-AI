@@ -5,7 +5,6 @@ from agents.utilitarian import UtilitarianAgent
 from agents.green import GreenAgent
 from agents.summarizer import SummarizerAgent
 from agents.reporter import ReporterAgent
-from agents.searcher import SearcherAgent
 
 __all__ = [
     "BaseLLMAgent",
@@ -13,5 +12,4 @@ __all__ = [
     "GreenAgent",
     "SummarizerAgent",
     "ReporterAgent",
-    "SearcherAgent",
 ]

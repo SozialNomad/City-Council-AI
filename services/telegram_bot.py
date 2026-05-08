@@ -20,9 +20,7 @@ from config import TELEGRAM_BOT_TOKEN
 from orchestrators.comparator import run_comparison
 from orchestrators.reporter_workflow import run_report_workflow
 from agents.reporter import ReporterAgent
-from agents.searcher import SearcherAgent
 from services.storage import load_settings, save_settings
-from services.search import perform_search
 
 logger = logging.getLogger(__name__)
 
@@ -107,15 +105,23 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await _handle_report_command(update, context)
         return
 
-    # Special trigger: "web search"
-    if user_text.lower().strip() == "web search":
-        await _handle_web_search_command(update, context)
-        return
-
     # Special trigger: "change city"
     if user_text.lower().strip() == "change city":
         context.user_data["awaiting_city"] = True
         await update.message.reply_text("🏙️ Which city would you like to set for the reports?")
+        return
+
+    # Special trigger: "help"
+    if user_text.lower().strip() == "help" or user_text.lower().strip() == "/help":
+        help_text = (
+            "🤖 *City Council AI Help*\n\n"
+            "You can interact with me using the following commands:\n\n"
+            "• *Any text query*: Send a question to get a multi-perspective analysis.\n"
+            "• *`report`*: Get current air quality and environmental data.\n"
+            "• *`change city`*: Update the city location for reports.\n"
+            "• *`help`*: Show this help message."
+        )
+        await update.message.reply_text(help_text, parse_mode="Markdown")
         return
 
     # Handle city entry if we are awaiting it
@@ -183,67 +189,6 @@ async def _handle_report_command(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_message(
             chat_id=chat_id,
             text="❌ Sorry, I couldn't generate the report right now.",
-        )
-
-
-async def _handle_web_search_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Perform a web search for green topics in the registered city."""
-    if update.message is None:
-        return
-
-    chat_id = update.message.chat_id
-    
-    # 1. Get current city
-    settings = load_settings()
-    from config import AIR_QUALITY_LOCATION
-    city = settings.get("city") or AIR_QUALITY_LOCATION
-
-    logger.info("Web search requested for city: %s", city)
-
-    # 2. Show typing status
-    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-    status_msg = await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"🌐 Searching for the latest green news in *{city}*...",
-        parse_mode="Markdown"
-    )
-
-    try:
-        # 3. Perform search
-        query = f'"{city}" sustainability environment "climate change"'
-        results = perform_search(query, max_results=8)
-
-        if not results:
-            await context.bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=status_msg.message_id,
-                text=f"Sorry, I couldn't find any recent green news for {city} right now."
-            )
-            return
-
-        # 4. Process with SearcherAgent
-        search_agent = SearcherAgent()
-        # Format results for the agent
-        formatted_results = "\n\n".join([f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}" for r in results])
-        
-        agent_input = f"City: {city}\n\nSearch Results:\n{formatted_results}"
-        commentary = await search_agent.generate(agent_input)
-
-        # 5. Send final message
-        header = f"*{SearcherAgent.ICON} {SearcherAgent.DISPLAY_NAME}*"
-        full_text = f"{header}\n\n{commentary}"
-        
-        await _send_long(context.bot, chat_id, full_text, parse_mode="Markdown")
-        
-        # 6. Delete status message
-        await context.bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
-
-    except Exception:
-        logger.exception("Web search failed.")
-        await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=status_msg.message_id,
-            text="❌ An error occurred during the web search."
         )
 
 
