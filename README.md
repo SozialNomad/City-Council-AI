@@ -37,7 +37,9 @@ Telegram was chosen as the primary interface for several key reasons:
 
 ## System Architecture
 
-*(A multi-agent flowchart will be added here to visualize the decision-making process and communication flow between specialized agents.)*
+Our multi-agent flowchart is here to visualize the decision-making process and communication flow between specialized agents:
+
+<img width="1920" height="1080" alt="Agents_Flowchart" src="https://github.com/user-attachments/assets/b4675d44-c4b0-4a2e-bd76-5fdfc9a155a2" />
 
 ## Project Structure
 
