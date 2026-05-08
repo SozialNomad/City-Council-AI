@@ -35,6 +35,10 @@ Telegram was chosen as the primary interface for several key reasons:
 - **Native UI Components**: Features like slash commands and formatted Markdown allow for a clean, structured user experience without a complex custom frontend.
 - **Rapid Prototyping**: Utilizing Telegram's robust API allows the project to focus on core agentic logic and multi-perspective decision support while maintaining a premium interface.
 
+## System Architecture
+
+*(A multi-agent flowchart will be added here to visualize the decision-making process and communication flow between specialized agents.)*
+
 ## Project Structure
 
 - `main.py`: Entry point that boots the Telegram bot and manages process lifecycle.
