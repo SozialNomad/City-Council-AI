@@ -1,6 +1,6 @@
-# City Council AI
+# EcoNomics Bot
 
-City Council AI is an agentic decision-support system designed to assist in urban evaluation and environmental monitoring. **Note: This project does not function as an actual city council; instead, it serves a supportive role in the decision-making process by evaluating issues from multiple perspectives.**
+EcoNomics Bot is an agentic decision-support system designed to assist in evaluation for environmental and economic aspects. **Note: This project does not function as an actual decision maker; instead, it serves a supportive role in the process by evaluating issues from multiple perspectives.**
 
 The system leverages specialized AI agents to analyze data, compile reports, and provide insights directly through a Telegram interface.
 
